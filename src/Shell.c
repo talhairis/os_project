@@ -15,30 +15,44 @@ void shell() {
             continue;
         }
 
-        // Yeni satır karakterini kaldır
+        // Girişin sonundaki yeni satır karakterini kaldır
         input[strcspn(input, "\n")] = 0;
 
-        // Komutları ayrıştır
-        int i = 0;
-        char *token = strtok(input, " ");
-        while (token != NULL && i < MAX_ARGS - 1) {
-            args[i++] = token;
-            token = strtok(NULL, " ");
-        }
-        args[i] = NULL;
+        // ";" ile ayrılmış komutları işler
+        char *commands[MAX_ARGS];
+        int command_count = 0;
 
-        if (args[0] == NULL) {
-            continue;
+        char *command = strtok(input, ";");
+        while (command != NULL) {
+            commands[command_count++] = command;
+            command = strtok(NULL, ";");
         }
 
-        // quit komutunu kontrol et
-        if (strcmp(args[0], "quit") == 0) {
-            handle_quit();
-            return;
-        }
+        // Her komutu sırayla işle
+        for (int i = 0; i < command_count; i++) {
+            // Komutu parçala
+            char *token = strtok(commands[i], " \t\r\n");
+            int arg_index = 0;
+            while (token != NULL) {
+                args[arg_index++] = token;
+                token = strtok(NULL, " \t\r\n");
+            }
+            args[arg_index] = NULL;
 
-        // Komutu çalıştır
-        execute_command(args);
+            // Boş komutları atla
+            if (args[0] == NULL) {
+                continue;
+            }
+
+            // quit komutunu kontrol et
+            if (strcmp(args[0], "quit") == 0) {
+                handle_quit();
+                return;
+            }
+
+            // Komutu çalıştır
+            execute_command(args);
+        }
     }
 }
 
