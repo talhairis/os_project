@@ -15,6 +15,7 @@
 
 void shell();
 void execute_command(char**);
+void redirect_input_output(char**);
 void handle_quit();
 
 #endif
