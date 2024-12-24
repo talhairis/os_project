@@ -16,6 +16,7 @@
 void shell();
 void execute_command(char**);
 void redirect_input_output(char**);
+int handle_pipe(char**);
 void handle_quit();
 
 #endif

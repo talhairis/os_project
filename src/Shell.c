@@ -49,6 +49,11 @@ void shell() {
                 return;
             }
 
+            // Pipe'ı kontrol et ve işle
+            if (handle_pipe(args)) {
+                continue;
+            }
+
             // Komutu çalıştır
             execute_command(args);
         }
@@ -88,7 +93,7 @@ void redirect_input_output(char **args) {
             dup2(fd, STDIN_FILENO);
             close(fd);
             args[i] = NULL;
-            args[i + 1] = NULL;
+            args[i + 1] = NULL; // Pipe'lara karışmaması için temizle
         } else if (strcmp(args[i], ">") == 0) {
             int fd = open(args[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
             if (fd < 0) {
@@ -98,9 +103,72 @@ void redirect_input_output(char **args) {
             dup2(fd, STDOUT_FILENO);
             close(fd);
             args[i] = NULL;
-            args[i + 1] = NULL;
+            args[i + 1] = NULL; // Pipe'lara karışmaması için temizle
         }
     }
+}
+
+int handle_pipe(char **args) {
+    int pipe_positions[MAX_ARGS] = {0};
+    int pipe_count = 0;
+
+    // Pipe pozisyonlarını tespit et
+    for (int i = 0; args[i] != NULL; i++) {
+        if (strcmp(args[i], "|") == 0) {
+            pipe_positions[pipe_count++] = i;
+            args[i] = NULL; // Pipe sembolünü kaldır
+        }
+    }
+
+    if (pipe_count == 0) {
+        return 0; // Pipe yok
+    }
+
+    int prev_pipe_fd = -1;
+    for (int i = 0; i <= pipe_count; i++) {
+        int pipe_fd[2];
+        if (i < pipe_count && pipe(pipe_fd) < 0) {
+            perror("Pipe failed");
+            return -1;
+        }
+
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("Fork failed");
+            return -1;
+        }
+
+        if (pid == 0) {
+            // Çocuk süreç
+            if (prev_pipe_fd != -1) {
+                dup2(prev_pipe_fd, STDIN_FILENO);
+                close(prev_pipe_fd);
+            }
+            if (i < pipe_count) {
+                dup2(pipe_fd[1], STDOUT_FILENO);
+                close(pipe_fd[1]);
+            }
+
+            if (pipe_fd[0] != -1) close(pipe_fd[0]);
+
+            // Komutun yönlendirmesini ayarla
+            redirect_input_output(args + (i == 0 ? 0 : pipe_positions[i - 1] + 1));
+
+            execvp(args[i == 0 ? 0 : pipe_positions[i - 1] + 1], args + (i == 0 ? 0 : pipe_positions[i - 1] + 1));
+            perror("Exec failed");
+            exit(EXIT_FAILURE);
+        } else {
+            // Ana süreç
+            if (prev_pipe_fd != -1) close(prev_pipe_fd);
+            if (i < pipe_count) close(pipe_fd[1]);
+
+            prev_pipe_fd = pipe_fd[0];
+        }
+    }
+
+    for (int i = 0; i <= pipe_count; i++) wait(NULL);
+
+    return 1;
 }
 
 void handle_quit() {
