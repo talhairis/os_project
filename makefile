@@ -1,3 +1,15 @@
+# /*
+#  * Project: İşletim Sistemleri Projesi (Operating Systems Project)
+#  * Contributors:
+#  *  - Talha Biçer
+#  *  - Talha İris
+#  *  - Ayberk Karaköse
+#  *  - Uygar Kesin
+#  *  - Cengizhan Keyfli
+#  *
+#  * Created: 2024
+#  */
+
 hepsi: derle calistir
 
 derle:

@@ -1,3 +1,15 @@
+/*
+ * Project: İşletim Sistemleri Projesi(Operating Systems Project)
+ * Contributors:
+ *  - Talha Biçer
+ *  - Talha iris
+ *  - Ayberk Karaköse
+ *  - Uygar Kesin
+ *  - Cengizhan Keyfli
+ *
+ * Created: 2024
+ */
+
 #ifndef SHELL_H
 #define SHELL_H
 
