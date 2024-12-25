@@ -13,10 +13,12 @@
 #define MAX_INPUT 1024
 #define MAX_ARGS 64
 
+void* monitor_background_processes(void*);
 void shell();
-void execute_command(char**);
+void execute_command(char**, int);
 void redirect_input_output(char**);
 int handle_pipe(char**);
 void handle_quit();
+void check_background_processes();
 
 #endif

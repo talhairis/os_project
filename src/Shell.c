@@ -1,9 +1,49 @@
 // Kabuk (Shell) Programı
 #include "Shell.h"
 
+pid_t background_pids[MAX_ARGS];
+int background_count = 0;
+int keep_running;
+
+// sigaction, WHANGUP
+
+// Arka planda çalışan işlemleri izleyen fonksiyon
+void* monitor_background_processes(void* arg) {
+    while (1) {
+        sleep(1); // Sürekli kontrol için bekleme (1 saniye)
+        for (int i = 0; i < background_count; i++) {
+            int status;
+            pid_t pid = waitpid(background_pids[i], &status, WNOHANG);
+            if (pid > 0) {  // İşlem tamamlandı
+                if (WIFEXITED(status)) {
+                    printf("\nProcess [%d] finished with exit status %d\n", pid, WEXITSTATUS(status));
+                } else if (WIFSIGNALED(status)) {
+                    printf("\nProcess [%d] terminated by signal %d\n", pid, WTERMSIG(status));
+                }
+                // İşlem tamamlandığında listeden kaldır
+                for (int j = i; j < background_count - 1; j++) {
+                    background_pids[j] = background_pids[j + 1];
+                }
+                background_count--;
+
+                // Prompt yeniden yazdır
+                if (keep_running == 1) {
+                    printf("> ");
+                    fflush(stdout);
+                }
+            }
+        }
+
+        if (background_count == 0 && keep_running == 0) {
+            break;
+        }
+    }
+}
+
 void shell() {
     char input[MAX_INPUT];
     char *args[MAX_ARGS];
+    keep_running = 1;
 
     while(1) {
         printf("> ");
@@ -49,18 +89,25 @@ void shell() {
                 return;
             }
 
+            // Arka planda çalıştırmayı kontrol et
+            int background = 0;
+            if (arg_index > 0 && strcmp(args[arg_index - 1], "&") == 0) {
+                background = 1;
+                args[arg_index - 1] = NULL;
+            }
+
             // Pipe'ı kontrol et ve işle
             if (handle_pipe(args)) {
                 continue;
             }
 
             // Komutu çalıştır
-            execute_command(args);
+            execute_command(args, background);
         }
     }
 }
 
-void execute_command(char **args) {
+void execute_command(char **args, int background) {
     pid_t pid = fork();
 
     if (pid < 0) {
@@ -77,8 +124,13 @@ void execute_command(char **args) {
         }
     } else {
         // Ana süreç
-        int status;
-        waitpid(pid, &status, 0);
+        if (background) {
+            background_pids[background_count++] = pid;
+            printf("[%d] Running in background\n", pid);
+        } else {
+            int status;
+            waitpid(pid, &status, 0);
+        }
     }
 }
 
@@ -173,4 +225,5 @@ int handle_pipe(char **args) {
 
 void handle_quit() {
     printf("Exiting shell...\n");
+    keep_running = 0;  // Shell döngüsünü sonlandır
 }
